@@ -1,42 +1,186 @@
 const express = require('express');
 const router = express.Router();
-const fs =require('fs')
+let user = []
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
+/* Register*/
+router.post('/auth/register', (req, res) => {
+  const { password, login, username, lastname } = req.body
+  const id = `${Date.now()}_${Math.random()}`;
+  let dublication;
+  try {
+    user.map(u => {
+      if (u.login === login) {
+        dublication = true
+      } else {
+        dublication = false
+      }
+    })
+    const newUser = {
+      id: id,
+      username: username,
+      lastname: lastname,
+      password: password,
+      login: login
+    }
+    if (!dublication) {
+      if (newUser.username.length >= 3 && newUser.login.length >= 6 && newUser.password.length >= 4) {
+        user.push(newUser)
+        return res.status(200).json({
+          message: "New user has been suucesfuly registred"
+        })
+      } else {
+        return res.status(400).json({ message: 'incorect registration fields' })
+      }
+    } else {
+      return res.status(400).json({ message: 'dublication users not allowed' })
 
-  res.render('home', { title: 'Express'});
+    }
+
+  } catch (error) {
+    return res.status(500).json(error.message)
+  }
+
+});
+
+/* Login*/
+router.post('/auth/login', (req, res) => {
+  const { password, login } = req.body
+  try {
+    if (user.length > 0) {
+      user.map(u => {
+        if (u.password === password && u.login === login) {
+          return res.status(200).json(user)
+
+        } else {
+          return res.status(400).json({
+            message: 'invalid password or login'
+          })
+
+        }
+      })
+    } else {
+      return res.status(400).json({
+        message: 'Do yopu not registred'
+      })
+
+    }
+  } catch (error) {
+    return res.status(500).json(error.message)
+  }
 });
 
 
-/* GET about page. */
-router.get('/about', (req, res) => {
+/* GET userById*/
+router.get('/user/:id', (req, res) => {
+  const { id } = req.params
+  try {
+    if (user.length > 0) {
+      user.map(item => {
+        if (item.id === id) {
+          return res.status(200).json(item)
+        } else {
+          return res.status(400).json({
+            message: "user not found"
+          })
+        }
+      })
+    } else {
+      return res.status(400).json({
+        message: "user not found"
+      })
+    }
 
-  res.render('about', { name: 'Gurgen',lastname:"Mkrtchyan"});
+  } catch (error) {
+    return res.status(500).json(error.message)
+  }
 });
 
 
+/* GET all users*/
+router.get('/users', (req, res) => {
+  try {
+    return res.status(200).json(user)
+  } catch (error) {
+    return res.status(500).json(error.message)
+  }
+});
 
-//   lesson 2 expressjs (framework) create file and filecontext
 
-router.get('/:express', function(req, res){
+/* delete*/
+router.delete('/user/:id', (req, res) => {
+  const { id } = req.params
+  try {
+    const filterUser = user.filter(item => item.id !== id)
+    if (filterUser.length !== user.length) {
+      user = filterUser
+      return res.status(200).json(user)
+    } else {
+      return res.status(400).json({
+        messgae: "user is not found"
+      })
+    }
+  } catch (error) {
+    return res.status(500).json(error.message)
+  }
+
+});
 
 
-  const filepath = req.query.filepath;
-  const filecontext = req.query.filecontext;
-
-  if(filepath && filecontext) {
-    fs.appendFileSync(filepath,filecontext)
-   res.send(filepath + ` --- ` + filecontext)
-
+/* update */
+router.put("/user/:id", (req, res) => {
+  const { id } = req.params;
+  const { username, lastname, password, login } = req.body
+  try {
+    if (user.length > 0) {
+      user.map(item => {
+        if (item.id === id) {
+          item.username = username,
+            item.login = login,
+            item.password = password,
+            item.lastname = lastname
+          return res.status(200).json(item)
+        } else {
+          return res.status(400).json({
+            message: "user is not found"
+          })
+        }
+      })
+    } else {
+      return res.status(400).json({
+        message: "user is not found"
+      })
+    }
+  } catch (error) {
+    return res.status(500).json(error.message)
 
   }
-    //  res.render("express",{
-    //  filepath:req.query.filepath,
-    //  filecontext:req.query.filecontext
-    // } )
-  res.send(` <mark> PLEASE ENTER  --- </mark>   express?filepath=...&filecontext=... `)
+});
+
+
+/* search by username*/
+router.get("/users/search/", (req, res) => {
+  const { q } = req.query;
+  try {
+    const results = user.filter(u => {
+      if (q !== undefined && u.username.search(new RegExp(q, 'i')) === -1) {
+        return false
+      }
+      return true
+    });
+    if (results.length) {
+      return res.status(200).json(results)
+    } else {
+      return res.status(200).json({
+        message: "invalid query result"
+      });
+
+    }
+  } catch (error) {
+    return res.status(500).json(error.message)
+
+  }
 });
 
 
 module.exports = router;
+
